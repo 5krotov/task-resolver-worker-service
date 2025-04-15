@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/IBM/sarama"
@@ -10,34 +11,36 @@ type Producer struct {
 	syncProducer sarama.SyncProducer
 }
 
-func NewProducer(brokers []string) (*Producer, error) {
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-	config.Version = sarama.V2_5_0_0
+func NewProducer(brokerAddr string) (*Producer, error) {
+	cfg := sarama.NewConfig()
+	cfg.Producer.Return.Successes = true
+	cfg.Version = sarama.V2_5_0_0
 
-	producer, err := sarama.NewSyncProducer(brokers, config)
+	sp, err := sarama.NewSyncProducer([]string{brokerAddr}, cfg)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Producer{syncProducer: producer}, nil
+	return &Producer{syncProducer: sp}, nil
 }
 
 func (p *Producer) Close() error {
 	return p.syncProducer.Close()
 }
 
-func (p *Producer) SendMessage(topic, key, value string) error {
+func (p *Producer) SendMessage(topic, key string, data interface{}) error {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
 		Key:   sarama.StringEncoder(key),
-		Value: sarama.StringEncoder(value),
+		Value: sarama.ByteEncoder(bytes),
 	}
-
 	partition, offset, err := p.syncProducer.SendMessage(msg)
 	if err != nil {
 		return err
 	}
-	log.Printf("Message is stored in topic(%s)/partition(%d)/offset(%d)\n", topic, partition, offset)
+	log.Printf("[Producer] -> topic=%s, partition=%d, offset=%d", topic, partition, offset)
 	return nil
 }
