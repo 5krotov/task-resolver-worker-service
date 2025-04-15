@@ -60,7 +60,7 @@ func TestPartitionedWorkerIntegration(t *testing.T) {
 	}
 
 	// 2) Start your partitioned worker
-	repo, err := kafka.NewPartitionedTaskRepository(cfg.Kafka.Addr, cfg.Kafka.TaskTopic, cfg.Kafka.StatusTopic)
+	repo, err := kafka.NewPartitionedTaskRepository(cfg.Kafka.Addr, cfg.Kafka.TaskTopic, cfg)
 	require.NoError(t, err, "failed to create partitioned repo")
 
 	workerSrv := worker.NewWorkerService(cfg, repo)

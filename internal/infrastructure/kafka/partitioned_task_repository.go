@@ -3,6 +3,7 @@ package kafka
 import (
 	"fmt"
 	"log"
+	"worker-service/internal/config"
 
 	entity "github.com/5krotov/task-resolver-pkg/entity/v1"
 )
@@ -14,8 +15,8 @@ type PartitionedTaskRepository struct {
 	errChan   <-chan error
 }
 
-func NewPartitionedTaskRepository(brokerAddr, taskTopic, statusTopic string) (*PartitionedTaskRepository, error) {
-	taskChan := make(chan *TaskMessage, 10) // arbitrary buffer
+func NewPartitionedTaskRepository(brokerAddr, taskTopic string, cfg *config.Config) (*PartitionedTaskRepository, error) {
+	taskChan := make(chan *TaskMessage, cfg.Worker.QueueSize) // arbitrary buffer
 	errChan := make(chan error, 10)
 
 	pConsumer, err := NewPartitionedConsumer(brokerAddr, taskTopic, taskChan, errChan)
@@ -53,6 +54,7 @@ func (r *PartitionedTaskRepository) PublishStatus(statusTopic string, id int64, 
 	payload := map[string]interface{}{
 		"id":     id,
 		"status": status,
+		"times":  status.Timestamp,
 	}
 	return r.producer.SendMessage(statusTopic, key, payload)
 }
