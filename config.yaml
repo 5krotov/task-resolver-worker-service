@@ -1,2 +1,9 @@
 http:
-  addr: "0.0.0.0:8080"
+  addr: ":8080"
+
+kafka:
+  brokers:
+    - "localhost:9092"
+  group_id: "example-consumer-group"
+  in_topic: "tasks"
+  out_topic: "results"
