@@ -19,7 +19,7 @@ func NewApp() *App {
 
 func (*App) Run(cfg *config.Config) {
 	// 2) Create PartitionedTaskRepository
-	repo, err := kafka.NewPartitionedTaskRepository(cfg.Kafka.Addr, cfg.Kafka.TaskTopic)
+	repo, err := kafka.NewPartitionedTaskRepository(cfg.Kafka.Addr, cfg.Kafka.TaskTopic, cfg)
 	if err != nil {
 		log.Fatalf("Failed to create PartitionedTaskRepository: %v", err)
 	}
