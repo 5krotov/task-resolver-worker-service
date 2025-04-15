@@ -13,7 +13,7 @@ type KafkaTaskRepository struct {
 	inTopic  string
 	outTopic string
 
-	producer *Producer
+	Producer *Producer
 }
 
 func NewKafkaTaskRepository(brokers []string, groupID, inTopic, outTopic string) (*KafkaTaskRepository, error) {
@@ -27,8 +27,12 @@ func NewKafkaTaskRepository(brokers []string, groupID, inTopic, outTopic string)
 		groupID:  groupID,
 		inTopic:  inTopic,
 		outTopic: outTopic,
-		producer: producer,
+		Producer: producer,
 	}, nil
+}
+
+func (k *KafkaTaskRepository) GetProducer() *Producer {
+	return k.Producer
 }
 
 func (k *KafkaTaskRepository) ConsumeTasks() (<-chan *domain.Task, <-chan error) {
@@ -52,5 +56,5 @@ func (k *KafkaTaskRepository) ConsumeTasks() (<-chan *domain.Task, <-chan error)
 func (k *KafkaTaskRepository) ProduceResult(task *domain.Task) error {
 	key := task.ID
 	value := fmt.Sprintf("Result: %s", task.Result)
-	return k.producer.SendMessage(k.outTopic, key, value)
+	return k.Producer.SendMessage(k.outTopic, key, value)
 }
