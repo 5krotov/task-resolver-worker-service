@@ -69,8 +69,13 @@ func TestPartitionedWorkerIntegration(t *testing.T) {
 	defer workerSrv.Stop()
 
 	// 3) Produce tasks to "tasks" topic
-	syncProducer, err := sarama.NewSyncProducer([]string{brokerAddr}, sarama.NewConfig())
-	require.NoError(t, err, "failed to create SyncProducer")
+	producerCfg := sarama.NewConfig()
+	producerCfg.Producer.Return.Successes = true
+
+	syncProducer, err := sarama.NewSyncProducer([]string{brokerAddr}, producerCfg)
+	if err != nil {
+		t.Fatalf("failed to create SyncProducer: %v", err)
+	}
 	defer syncProducer.Close()
 
 	require.NoError(t, produceTestTask(syncProducer, cfg.Kafka.TaskTopic, 1001, 1))
@@ -113,25 +118,61 @@ loop:
 // it reads the container logs and returns an error with that output.
 func startKafkaContainerWithLogs(ctx context.Context) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
-		Image:        "bitnami/kafka:3.4.0",
-		ExposedPorts: []string{"9092/tcp"},
+		Image: "bitnami/kafka:3.4.0",
+		ExposedPorts: []string{
+			"9092:9092", // Map container 9092 to host 9092
+			"9093:9093", // Map container 9093 to host 9093, if needed for the controller
+		},
 		Env: map[string]string{
-			"ALLOW_PLAINTEXT_LISTENER": "yes",
-			// Example KRaft single-node config
-			"KAFKA_ENABLE_KRAFT":                       "yes",
-			"KAFKA_CFG_NODE_ID":                        "1",
-			"KAFKA_CFG_PROCESS_ROLES":                  "broker,controller",
-			"KAFKA_CFG_CONTROLLER_QUORUM_VOTERS":       "1@127.0.0.1:9093",
-			"KAFKA_CFG_LISTENERS":                      "PLAINTEXT://:9092,CONTROLLER://:9093",
-			"KAFKA_CFG_ADVERTISED_LISTENERS":           "PLAINTEXT://localhost:9092,CONTROLLER://localhost:9093",
-			"KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP": "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT",
-			"KAFKA_CFG_INTER_BROKER_LISTENER_NAME":     "PLAINTEXT",
+			// 1) Enable debug logging for the Bitnami scripts to see more detailed output.
+			"BITNAMI_DEBUG": "true",
 
+			// 2) Allows Kafka to use plaintext listeners for dev/testing.
+			//    *NOT* recommended for production.
+			"ALLOW_PLAINTEXT_LISTENER": "yes",
+
+			// 3) Tells the Bitnami container to run Kafka in KRaft mode, no Zookeeper.
+			"KAFKA_ENABLE_KRAFT": "yes",
+
+			// 4) Node ID for this single Kafka instance (KRaft requires a node ID).
+			"KAFKA_CFG_NODE_ID": "1",
+
+			// 5) This single node acts as *both* broker and controller in KRaft.
+			"KAFKA_CFG_PROCESS_ROLES": "broker,controller",
+
+			// 6) Quorum voters: "1@(host:port)" means node ID=1 at 0.0.0.0:9093 is the sole voter.
+			//    KRaft uses this for controller communication.
+			"KAFKA_CFG_CONTROLLER_QUORUM_VOTERS": "1@0.0.0.0:9093",
+
+			// 7) Tells Kafka that the "CONTROLLER" listener name is reserved for the controller role.
+			"KAFKA_CFG_CONTROLLER_LISTENER_NAMES": "CONTROLLER",
+
+			// 8) We define two listeners inside the container:
+			//    - PLAINTEXT://0.0.0.0:9092 for broker traffic
+			//    - CONTROLLER://0.0.0.0:9093 for controller traffic
+			"KAFKA_CFG_LISTENERS": "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093",
+
+			// 9) **Important**:
+			//    Must NOT advertise the controller listener to clients.
+			//    Only advertise the broker listener so clients connect to "PLAINTEXT://localhost:9092".
+			"KAFKA_CFG_ADVERTISED_LISTENERS": "PLAINTEXT://localhost:9092",
+
+			// 10) Map each listener name to a security protocol, both are PLAINTEXT in this dev scenario.
+			"KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP": "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT",
+
+			// 11) Tells Kafka that the "PLAINTEXT" listener is used for inter-broker communication.
+			"KAFKA_CFG_INTER_BROKER_LISTENER_NAME": "PLAINTEXT",
+
+			// 12) Single-broker replication settings:
+			//    1 replica for offsets, transactions, etc., because we only have one node.
 			"KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR":         "1",
 			"KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR":            "1",
 			"KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
-			"KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE":                "true",
+
+			// 13) Let Kafka auto-create topics if they don't exist (helpful for testing).
+			"KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE": "true",
 		},
+
 		WaitingFor: wait.ForListeningPort("9092/tcp").
 			WithStartupTimeout(120 * time.Second),
 	}
@@ -141,7 +182,7 @@ func startKafkaContainerWithLogs(ctx context.Context) (testcontainers.Container,
 		Started:          true,
 	})
 	if err != nil {
-		// If container fails to start, grab logs
+		// If container fails to start, capture logs
 		logs, logsErr := tryReadLogs(ctx, container)
 		if logsErr != nil {
 			return nil, fmt.Errorf("start container: %w; also could not read logs: %v", err, logsErr)
