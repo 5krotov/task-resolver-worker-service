@@ -9,8 +9,13 @@ import (
 )
 
 type Config struct {
-	Kafka  KafkaConfig  `yaml:"kafka"`
-	Worker WorkerConfig `yaml:"worker"`
+	HTTPConfig HTTPConfig   `yaml:"http"`
+	Kafka      KafkaConfig  `yaml:"kafka"`
+	Worker     WorkerConfig `yaml:"worker"`
+}
+
+type HTTPConfig struct {
+	Addr string `yaml:"addr"`
 }
 
 type KafkaConfig struct {

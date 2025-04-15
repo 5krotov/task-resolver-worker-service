@@ -1,3 +1,6 @@
+http:
+  addr: ":8080"
+
 kafka:
   addr: "localhost:9092"
   group: ""            # Not used in one worker=one partition approach
