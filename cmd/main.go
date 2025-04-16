@@ -1,24 +1,19 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"worker-service/internal/app"
 	"worker-service/internal/config"
 )
 
 func main() {
-	var cfgPath string
-	flag.StringVar(&cfgPath, "config", "/etc/worker-service/config.yaml", "path to config file")
-	flag.Parse()
-
+	// 1) Load config
 	cfg := config.NewConfig()
-	err := cfg.Load(cfgPath)
+	err := cfg.Load("config.yaml")
 	if err != nil {
-		log.Fatalf("Error load config: %v", err)
-		return
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	a := app.NewApp()
-	a.Run(*cfg)
+	a.Run(cfg)
 }

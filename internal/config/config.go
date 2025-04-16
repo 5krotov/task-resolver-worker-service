@@ -2,17 +2,32 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	HTTPConfig `yaml:"http" validate:"required"`
+	HTTPConfig HTTPConfig   `yaml:"http"`
+	Kafka      KafkaConfig  `yaml:"kafka"`
+	Worker     WorkerConfig `yaml:"worker"`
 }
 
 type HTTPConfig struct {
-	Addr string `yaml:"addr" validate:"required"`
+	Addr string `yaml:"addr"`
+}
+
+type KafkaConfig struct {
+	Addr        string `yaml:"addr"`
+	Group       string `yaml:"group"` // not used if skipping consumer groups
+	TaskTopic   string `yaml:"task_topic"`
+	StatusTopic string `yaml:"status_topic"`
+}
+
+type WorkerConfig struct {
+	QueueSize int `yaml:"queue_size"`
+	Threads   int `yaml:"threads"`
 }
 
 func NewConfig() *Config {
@@ -30,7 +45,6 @@ func (c *Config) Load(path string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
-
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
