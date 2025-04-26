@@ -25,5 +25,5 @@ docker build -t worker-service -f ./.docker/Dockerfile .
 
 ### Run
 ```bash
-docker run -p 8080:8080 worker-service
+docker run worker-service
 ```

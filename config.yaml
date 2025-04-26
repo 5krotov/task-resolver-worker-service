@@ -1,12 +1,10 @@
-http:
-  addr: ":8080"
-
 kafka:
   addr: "localhost:9092"
-  group: ""            # Not used in one worker=one partition approach
+  group: "worker-group"
   task_topic: "tasks"
   status_topic: "task-status"
+  timeout: "10s"
+  retries: 3
 
 worker:
-  queue_size: 2
-  threads: 2
+  timescale: "1s"

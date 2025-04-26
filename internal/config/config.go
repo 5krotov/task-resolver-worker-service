@@ -9,25 +9,21 @@ import (
 )
 
 type Config struct {
-	HTTPConfig HTTPConfig   `yaml:"http"`
-	Kafka      KafkaConfig  `yaml:"kafka"`
-	Worker     WorkerConfig `yaml:"worker"`
-}
-
-type HTTPConfig struct {
-	Addr string `yaml:"addr"`
+	KafkaConfig  KafkaConfig  `yaml:"kafka"`
+	WorkerConfig WorkerConfig `yaml:"worker"`
 }
 
 type KafkaConfig struct {
 	Addr        string `yaml:"addr"`
-	Group       string `yaml:"group"` // not used if skipping consumer groups
+	Group       string `yaml:"group"`
 	TaskTopic   string `yaml:"task_topic"`
 	StatusTopic string `yaml:"status_topic"`
+	Timeout     string `yaml:"timeout"`
+	Retries     int    `yaml:"retries"`
 }
 
 type WorkerConfig struct {
-	QueueSize int `yaml:"queue_size"`
-	Threads   int `yaml:"threads"`
+	TimeScale string `yaml:"timescale"`
 }
 
 func NewConfig() *Config {

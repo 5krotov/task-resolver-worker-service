@@ -1,5 +1,5 @@
 # --- BUILD STAGE ---
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,5 @@ COPY --from=builder /app/worker-service /app/worker-service/
 COPY config.yaml /etc/worker-service/
 
 WORKDIR /app/worker-service/
-
-EXPOSE 8080
 
 CMD ["./worker-service"]
